@@ -86,23 +86,37 @@ t_ms,M1_rad,M2_rad,M3_rad,M4_rad
 12345,0.1234,-0.2345,0.4567,-0.7890
 ```
 
-## 测试工具
+## 快速命令参考 (用户操作)
+
+所有命令通过 `serial_test.py` 发送到 Unit5：
 
 ```bash
-# 连接 Unit5 串口
+# 基本格式
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "命令"
+
+# 查状态
 python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "motor status"
 
-# 采集电流数据
-python3 tools/log_current.py --port /dev/ttyACM0 --duration 10 --output test_results/current.csv
+# 使能/失能
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "motor enable all"
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "motor disable all"
 
-# 静态跟踪测试
-python3 tools/test_static_tracking.py --port /dev/ttyACM0 --heights 150,100
+# 标定 (手动摆好姿态后执行)
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "robot cali"
 
-# 数据绘图
-python3 tools/plot_test_data.py --file test_results/*.csv
+# 停止 (退回拖动模式)
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "robot stop"
+
+# 小步微调 (danger: 每次 ≤5mm, ≤1deg)
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "robot jog h 5"
+python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "robot jog phi 1"
+
+# 实时可视化
+python3 tools/robot_viz.py --port /dev/ttyACM0     # 角度→h/phi 映射
+python3 tools/live_view.py --port /dev/ttyACM0     # 50Hz 角度+力矩
 ```
 
-**Python 依赖**: `pyserial`, `numpy`, `matplotlib`
+**重要：** robot cali 在固件重启后丢失，需重新执行。
 
 ## 测试结果目录
 
@@ -160,6 +174,11 @@ linkage → 经理 & Unit5:
 | 电机扭矩常数 Kt | ~1.0 Nm/A | DM4310 datasheet |
 | 单腿电机数 | 2 (M1+M2 左, M3+M4 右) | — |
 | CAN 总线 | CAN1: M1+M2, CAN2: M3+M4 | — |
+| DM4310 CAN 命令 ID | 5-8 (M1-M4, 避开 3508 的 1-4) | dm4310_motor.h DM4310_CAN_TX_ID_BASE |
+| DM4310 CAN 反馈 ID | 0x205-0x208 | drain_rx CAN ID filter |
+| 3508 CAN ID | 1-4 (hub motor, 与 4310 同总线) | — |
+| 电机→关节映射 | M1=θaL, M2=θbL, M4=θaR, M3=θbR (M3/M4对调) | linkage_kinematics.h |
+| M4 编码器方向 | 反向 (DIR=-1), M1/M2/M3 正向 | linkage_kinematics.h LK_M4_DIR |
 
 ## 注意事项
 
@@ -171,3 +190,4 @@ linkage → 经理 & Unit5:
 - `robot cali` 会覆盖 `g_dm_offset[]`，执行前确认运动学 Agent 知情
 - 紧急停止: `python3 tools/serial_test.py --port /dev/ttyACM0 --cmd "motor disable all"`
 - 标定前确保 4 台电机全部在线，否则离线电机不会被标定
+- 4310 和 3508 共享 CAN 总线，CAN ID 已分离（4310=5-8, 3508=1-4），drain_rx 有 ID 滤波

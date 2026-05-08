@@ -63,7 +63,7 @@ def main():
                             if (t - last_t) / 1000.0 >= args.interval:
                                 last_t = t
                                 hL, phiL = fk(m1, m2)
-                                hR, phiR = fk(m3, m4)
+                                hR, phiR = fk(m4, m3)  # M4=θaR, M3=θbR (右腿对调)
                                 phiL_deg = phiL * 180.0 / math.pi
                                 phiR_deg = phiR * 180.0 / math.pi
                                 m1d = m1 * 180.0 / math.pi
